@@ -1,6 +1,7 @@
 var raf = require('./raf'),
     rng = require('./rng'),
     Vec2 = require('./math/vec2'),
+    DisplayButton = require('./display/displaybutton'),
     DisplayItemContainer = require('./display/displaycontainer'),
     DisplayCircle = require('./display/displaycircle'),
     DisplayRect = require('./display/displayrect'),
@@ -26,6 +27,8 @@ var logicMaxSteps = 5;
 var mouseDown = false;
 var mouseVec = new Vec2(0, 0);
 var mouseDownChanged = false;
+
+var buttonDowned = null;
 
 canvas.addEventListener('mousedown', function (e) {
   mouseDown = true;
@@ -77,6 +80,37 @@ for (var i = 0; i < 25; i++) {
   stage.addChild(boxes[i]);
 }
 
+var triggerShapes = false;
+
+var testButton = new DisplayButton({
+  x: 50,
+  y: 50,
+  width: 100,
+  height: 50,
+  click: function (e) {
+    triggerShapes = true;
+  }
+});
+stage.addChild(testButton);
+
+var testButtonDisplayRect = new DisplayRect({
+  width: testButton.width,
+  height: testButton.height,
+  color: '#aaaaff'
+});
+testButton.addChild(testButtonDisplayRect);
+
+var testButtonText = new DisplayText({
+  text: 'rawrawr',
+  font: '20px Arial',
+  textAlign: 'center',
+  textBaseline: 'middle',
+  x: testButton.aabb.x,
+  y: testButton.aabb.y,
+  color: '#000000'
+});
+testButton.addChild(testButtonText);
+
 var debugMouseDisplay = new DisplayText({
   text: 'rawrawr',
   textAlign: 'left',
@@ -96,9 +130,33 @@ function render(elapsed) {
   stage.postRender(elapsed);
 }
 function logicUpdate(elapsed) {
-  // Update each balls
+  if (mouseDownChanged) {
+    if (mouseDown && !buttonDowned) {
+      for (var i = stage.buttons.length - 1; i >= 0 && !buttonDowned; i--) {
+        var button = stage.buttons[i];
+        if (button.isStageVisible()) {
+          var stagePos = button.getStagePos();
+          if (button.aabb.contains(mouseVec.x - stagePos.x, mouseVec.y - stagePos.y)) {
+            buttonDowned = button;
+          }
+        }
+      }
+    } else if (!mouseDown && buttonDowned) {
+      var stagePos = buttonDowned.getStagePos();
+      if (buttonDowned.aabb.contains(mouseVec.x - stagePos.x, mouseVec.y - stagePos.y)) {
+        buttonDowned.click(mouseVec);
+      }
+      buttonDowned = null;
+    }
+  }
+  
+  if (triggerShapes) {
+    debugMouseDisplay.text = 'triggered at ' + mouseVec.x + ', ' + mouseVec.y;
+  }
+  
+  // Update each ball
   balls.forEach(function(ball) {
-    if (mouseDownChanged && mouseDown) {
+    if (triggerShapes) {
       ball.dx += rand.range(-1000, 1000);
       ball.dy += rand.range(-1000, 1000);
     }
@@ -114,10 +172,9 @@ function logicUpdate(elapsed) {
   
   // Update each box
   boxes.forEach(function (box) {
-    if (mouseDownChanged && mouseDown) {
+    if (triggerShapes) {
       box.dx += rand.range(-1000, 1000);
       box.dy += rand.range(-1000, 1000);
-      debugMouseDisplay.text = 'triggered at ' + mouseVec.x + ', ' + mouseVec.y;
     }
     box.dy += elapsed * 500;
     
@@ -127,6 +184,7 @@ function logicUpdate(elapsed) {
     box.update(elapsed);
   });
   
+  triggerShapes = false;
   mouseDownChanged = false;
 }
 

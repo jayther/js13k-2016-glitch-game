@@ -31,6 +31,10 @@ AABB.prototype = inherit(Appliable, {
   collidesAABB: function (aabb) {
     return Math.abs(this.x - aabb.x) < (this.hw + aabb.hw) &&
       Math.abs(this.y - aabb.y) < (this.hh + aabb.hh);
+  },
+  contains: function (x, y) {
+    return x >= this.getLeft() && x < this.getRight() &&
+      y >= this.getTop() && y < this.getBottom();
   }
 });
 

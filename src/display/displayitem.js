@@ -1,4 +1,5 @@
 var inherit = require('../util/inherit'),
+    Vec2 = require('../math/vec2'),
     Appliable = require('../util/appliable');
 
 function DisplayItem(options) {
@@ -16,6 +17,7 @@ function DisplayItem(options) {
     scaleY: 1
   }, options);
   this.parent = null;
+  this.isButton = false;
 }
 DisplayItem.prototype = inherit(Appliable, {
   update: function (elapsed) {
@@ -40,6 +42,22 @@ DisplayItem.prototype = inherit(Appliable, {
   },
   postRender: function (elapsed) {
     this.stage.ctx.restore();
+  },
+  isStageVisible: function () {
+    if (!this.parent) {
+      return this.visible;
+    }
+    var stageVisible = this.parent.isStageVisible();
+    return stageVisible && this.visible;
+  },
+  getStagePos: function () {
+    if (this.parent) {
+      var pos = this.parent.getStagePos();
+      pos.x += this.x;
+      pos.y += this.y;
+      return pos;
+    }
+    return new Vec2(this.x, this.y);
   }
 });
 

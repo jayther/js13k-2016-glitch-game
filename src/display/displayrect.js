@@ -7,10 +7,19 @@ function DisplayRect(options) {
   this.applyOptions({
     color: '#ffffff'
   }, options);
-  this.aabb = new AABB(this.aabb || this.rect || {
-    hw: this.hw || 0,
-    hh: this.hh || 0
-  });
+  if (this.hasOwnProperty('width') && this.hasOwnProperty('height')) {
+    this.aabb = new AABB({
+      x: this.width / 2,
+      y: this.height / 2,
+      hw: this.width / 2,
+      hh: this.height / 2
+    });
+  } else {
+    this.aabb = new AABB(this.aabb || this.rect || {
+      hw: this.hw || 0,
+      hh: this.hh || 0
+    });
+  }
 }
 DisplayRect.prototype = inherit(DisplayItem, {
   render: function (elapsed) {
