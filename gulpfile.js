@@ -10,7 +10,6 @@ var gulpif = require('gulp-if');
 var buffer = require('gulp-buffer');
 var concat = require('gulp-concat');
 var cssmin = require('gulp-cssmin');
-var eslint = require('gulp-eslint');
 var htmlmin = require('gulp-htmlmin');
 var less = require('gulp-less');
 var micro = require('gulp-micro');
@@ -78,12 +77,6 @@ gulp.task('clean', function() {
   rimraf.sync('dist');
 });
 
-gulp.task('lint', function() {
-  return gulp.src(['*.js', 'src/**/*.js'])
-    .pipe(eslint())
-    .pipe(eslint.format());
-});
-
 gulp.task('dist', ['build'], function() {
   if (!prod) {
     gutil.log(gutil.colors.yellow('WARNING'), gutil.colors.gray('Missing flag --prod'));
@@ -98,7 +91,7 @@ gulp.task('dist', ['build'], function() {
 });
 
 gulp.task('watch', function() {
-  gulp.watch('src/**/*.js', ['lint', 'build_source']);
+  gulp.watch('src/**/*.js', ['build_source']);
   gulp.watch('src/styles.less', ['build_styles']);
   gulp.watch('src/index.html', ['build_index']);
 });
