@@ -3,7 +3,8 @@ var raf = require('./raf'),
     Vec2 = require('./math/vec2'),
     DisplayItemContainer = require('./display/displaycontainer'),
     DisplayCircle = require('./display/displaycircle'),
-    DisplayRect = require('./display/displayrect');
+    DisplayRect = require('./display/displayrect'),
+    DisplayText = require('./display/displaytext');
 
 var canvas = document.querySelector('#game');
 var ctx = canvas.getContext('2d');
@@ -47,6 +48,8 @@ var stage = new DisplayItemContainer({
   ctx: ctx
 });
 
+ctx.font = '30px Arial';
+
 for (var i = 0; i < 25; i++) {
   balls.push(new DisplayCircle({
     x: rand.int(canvas.width),
@@ -73,6 +76,16 @@ for (var i = 0; i < 25; i++) {
   }));
   stage.addChild(boxes[i]);
 }
+
+var debugMouseDisplay = new DisplayText({
+  text: 'rawrawr',
+  textAlign: 'left',
+  textBaseline: 'top',
+  x: 5,
+  y: 5,
+  color: '#ffffff'
+});
+stage.addChild(debugMouseDisplay);
 
 function render(elapsed) {
   // Clear the screen
@@ -104,6 +117,7 @@ function logicUpdate(elapsed) {
     if (mouseDownChanged && mouseDown) {
       box.dx += rand.range(-1000, 1000);
       box.dy += rand.range(-1000, 1000);
+      debugMouseDisplay.text = 'triggered at ' + mouseVec.x + ', ' + mouseVec.y;
     }
     box.dy += elapsed * 500;
     
