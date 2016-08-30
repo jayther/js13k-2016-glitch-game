@@ -107,6 +107,10 @@ gulp.task('serve', ['build'], function() {
   });
 });
 
+gulp.task('test', ['build'], function () {
+  gutil.log(gutil.colors.yellow('TEST'), gutil.colors.gray('This is a prototype. We do not need tests here DansGame'));
+});
+
 gulp.task('deploy', ['build'], function() {
   if (!prod) {
     gutil.log(gutil.colors.yellow('WARNING'), gutil.colors.gray('Missing flag --prod'));
