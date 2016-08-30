@@ -1,5 +1,5 @@
 var inherit = require('../util/inherit'),
-    Appliable = require('../util/Appliable');
+    Appliable = require('../util/appliable');
 
 function AABB(options) {
   this.applyOptions({
