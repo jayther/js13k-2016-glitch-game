@@ -111,37 +111,31 @@ gulp.task('test', ['build'], function () {
   gutil.log(gutil.colors.yellow('TEST'), gutil.colors.gray('This is a prototype. We do not need tests here DansGame'));
 });
 
-gulp.task('deploy', ['build'], function() {
-  if (!prod) {
-    gutil.log(gutil.colors.yellow('WARNING'), gutil.colors.gray('Missing flag --prod'));
-    gutil.log(gutil.colors.yellow('WARNING'), gutil.colors.gray('You should generate production assets to lower the archive size'));
-  }
-  
-  if (!process.env.FTPHOST) {
-    gutil.log(gutil.colors.yellow('ERROR'), gutil.colors.gray('Missing FTPHOST env'));
-    throw new Error('Missing FTPHOST env');
-  }
-  if (!process.env.FTPUSER) {
-    gutil.log(gutil.colors.yellow('ERROR'), gutil.colors.gray('Missing FTPUSER env'));
-    throw new Error('Missing FTPUSER env');
-  }
-  if (!process.env.FTPPASS) {
-    gutil.log(gutil.colors.yellow('ERROR'), gutil.colors.gray('Missing FTPPASS env'));
-    throw new Error('Missing FTPPASS env');
-  }
-  if (!process.env.FTPPATH) {
-    gutil.log(gutil.colors.yellow('ERROR'), gutil.colors.gray('Missing FTPPATH env'));
-    throw new Error('Missing FTPPATH env');
-  }
-  return gulp.src('build/*')
-    .pipe(ftp({
-      host: process.env.FTPHOST,
-      user: process.env.FTPUSER,
-      pass: process.env.FTPPASS,
-      path: process.env.FTPPATH
-    }))
-    .pipe(gutil.noop());
-});
+if (process.env.CI) {
+  var requiredEnvs = ['FTPHOST', 'FTPPORT', 'FTPUSER', 'FTPPASS', 'FTPPATH'];
+  gulp.task('deploy', ['build'], function() {
+    if (!prod) {
+      gutil.log(gutil.colors.yellow('WARNING'), gutil.colors.gray('Missing flag --prod'));
+      gutil.log(gutil.colors.yellow('WARNING'), gutil.colors.gray('You should generate production assets to lower the archive size'));
+    }
+    
+    requiredEnvs.forEach(function (envKey) {
+      if (!process.env[envKey]) {
+        gutil.log(gutil.colors.red('ERROR'), gutil.colors.gray('Missing ' + envKey + ' env'));
+        throw new Error('Missing ' + envKey + ' env');
+      }
+    });
+    return gulp.src('build/*')
+      .pipe(ftp({
+        host: process.env.FTPHOST,
+        port: process.env.FTPPORT,
+        user: process.env.FTPUSER,
+        pass: process.env.FTPPASS,
+        remotePath: process.env.FTPPATH
+      }))
+      .pipe(gutil.noop());
+  });
+}
 
 function browserifyError(err) {
   gutil.log(gutil.colors.red('ERROR'), gutil.colors.gray(err.message));
