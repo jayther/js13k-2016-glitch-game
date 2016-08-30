@@ -117,6 +117,10 @@ gulp.task('deploy', ['build'], function() {
     gutil.log(gutil.colors.yellow('WARNING'), gutil.colors.gray('You should generate production assets to lower the archive size'));
   }
   
+  if (!process.env.FTPHOST) {
+    gutil.log(gutil.colors.yellow('ERROR'), gutil.colors.gray('Missing FTPHOST env'));
+    throw new Error('Missing FTPHOST env');
+  }
   if (!process.env.FTPUSER) {
     gutil.log(gutil.colors.yellow('ERROR'), gutil.colors.gray('Missing FTPUSER env'));
     throw new Error('Missing FTPUSER env');
@@ -131,7 +135,7 @@ gulp.task('deploy', ['build'], function() {
   }
   return gulp.src('build/*')
     .pipe(ftp({
-      host: 'jayther.com',
+      host: process.env.FTPHOST,
       user: process.env.FTPUSER,
       pass: process.env.FTPPASS,
       path: process.env.FTPPATH
