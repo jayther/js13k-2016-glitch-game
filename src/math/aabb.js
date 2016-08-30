@@ -35,6 +35,9 @@ AABB.prototype = inherit(Appliable, {
   contains: function (x, y) {
     return x >= this.getLeft() && x < this.getRight() &&
       y >= this.getTop() && y < this.getBottom();
+  },
+  copy: function () {
+    return new AABB(this);
   }
 });
 

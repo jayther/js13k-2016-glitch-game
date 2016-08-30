@@ -17,6 +17,7 @@ var size = require('gulp-size');
 var uglify = require('gulp-uglify');
 var zip = require('gulp-zip');
 var source = require('vinyl-source-stream');
+var ftp = require('gulp-ftp');
 
 program.on('--help', function(){
   console.log('  Tasks:');
@@ -104,6 +105,34 @@ gulp.task('serve', ['build'], function() {
   app.listen(3000, function() {
     gutil.log("Server started on '" + gutil.colors.green('http://localhost:3000') + "'");
   });
+});
+
+gulp.task('deploy', ['build'], function() {
+  if (!prod) {
+    gutil.log(gutil.colors.yellow('WARNING'), gutil.colors.gray('Missing flag --prod'));
+    gutil.log(gutil.colors.yellow('WARNING'), gutil.colors.gray('You should generate production assets to lower the archive size'));
+  }
+  
+  if (!process.env.FTPUSER) {
+    gutil.log(gutil.colors.yellow('ERROR'), gutil.colors.gray('Missing FTPUSER env'));
+    throw new Error('Missing FTPUSER env');
+  }
+  if (!process.env.FTPPASS) {
+    gutil.log(gutil.colors.yellow('ERROR'), gutil.colors.gray('Missing FTPPASS env'));
+    throw new Error('Missing FTPPASS env');
+  }
+  if (!process.env.FTPPATH) {
+    gutil.log(gutil.colors.yellow('ERROR'), gutil.colors.gray('Missing FTPPATH env'));
+    throw new Error('Missing FTPPATH env');
+  }
+  return gulp.src('build/*')
+    .pipe(ftp({
+      host: 'jayther.com',
+      user: process.env.FTPUSER,
+      pass: process.env.FTPPASS,
+      path: process.env.FTPPATH
+    }))
+    .pipe(gutil.noop());
 });
 
 function browserifyError(err) {
