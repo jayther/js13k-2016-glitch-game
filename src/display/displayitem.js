@@ -1,8 +1,10 @@
 var inherit = require('../util/inherit'),
     Vec2 = require('../math/vec2'),
-    Appliable = require('../util/appliable');
+    Appliable = require('../util/appliable'),
+    Dispatcher = require('../event/dispatcher');
 
 function DisplayItem(options) {
+  Dispatcher.apply(this, arguments);
   this.applyOptions({
     x: 0,
     y: 0,
@@ -19,7 +21,7 @@ function DisplayItem(options) {
   this.parent = null;
   this.isButton = false;
 }
-DisplayItem.prototype = inherit(Appliable, {
+DisplayItem.prototype = inherit(Dispatcher, Appliable, {
   update: function (elapsed) {
     this.x += this.dx * elapsed;
     this.y += this.dy * elapsed;

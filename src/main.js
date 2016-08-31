@@ -2,20 +2,21 @@ var raf = require('./raf'),
     rng = require('./rng'),
     Vec2 = require('./math/vec2'),
     AABB = require('./math/aabb'),
+    CursorMgr = require('./input/cursormgr'),
     DisplayButton = require('./display/displaybutton'),
     DisplayItemContainer = require('./display/displaycontainer'),
     DisplayCircle = require('./display/displaycircle'),
     DisplayRect = require('./display/displayrect'),
-    DisplayText = require('./display/displaytext');
+    DisplayText = require('./display/displaytext'),
+    Maze = require('./game/maze');
 
 var canvas = document.querySelector('#game');
 var ctx = canvas.getContext('2d');
+ctx.font = '30px Arial';
 
 var rand = rng();
 
 var player = null;
-var balls = [];
-var boxes = [];
 var bullets = [];
 var colors = [
   '#7FDBFF', '#0074D9', '#01FF70', '#001F3F', '#39CCCC',
@@ -41,6 +42,8 @@ var bulletSpeed = 1000;
 
 var walls = [];
 
+var currentStage = null;
+
 var canvasAABB = new AABB({
   x: canvas.width / 2,
   y: canvas.height / 2,
@@ -48,7 +51,7 @@ var canvasAABB = new AABB({
   hh: canvas.height / 2
 });
 
-var roomAABB = new AABB({
+var innerRoomAABB = new AABB({
   x: canvas.width / 2,
   y: canvas.height / 2,
   hw: canvas.width / 2 - 40,
@@ -67,24 +70,20 @@ var Keys = {
   W: 87
 };
 
-canvas.addEventListener('mousedown', function (e) {
-  mouseDown = true;
-  mouseDownChanged = true;
-  e.preventDefault();
-}, false);
+var cursorMgr = new CursorMgr({
+  areaTarget: canvas
+});
 
-canvas.addEventListener('mousemove', function (e) {
-  var rect = canvas.getBoundingClientRect();
-  mouseVec.x = Math.floor(e.pageX - rect.left);
-  mouseVec.y = Math.floor(e.pageY - rect.top);
-  e.preventDefault();
-}, false);
+cursorMgr.on('cursordown', function (e) {
+  currentStage.triggerMouseDown(e);
+});
+cursorMgr.on('cursorup', function (e) {
+  currentStage.triggerMouseUp(e);
+});
 
-canvas.addEventListener('mouseup', function (e) {
-  mouseDown = false;
-  mouseDownChanged = true;
-  e.preventDefault();
-}, false);
+cursorMgr.on('cursordown', function (e) {
+  triggerGun = true;
+});
 
 window.addEventListener('keydown', function (e) {
   //debugMouseDisplay.text = 'key downed: ' + e.keyCode;
@@ -99,12 +98,14 @@ window.addEventListener('keyup', function (e) {
   e.preventDefault();
 }, false);
 
-var stage = new DisplayItemContainer({
+var debugStage = new DisplayItemContainer({
   isStage: true,
   ctx: ctx
 });
+currentStage = debugStage;
 
-ctx.font = '30px Arial';
+var scrollLayer = new DisplayItemContainer();
+debugStage.addChild(scrollLayer);
 
 player = new DisplayRect({
   x: canvas.width / 2,
@@ -119,7 +120,7 @@ player.collisionAABB = player.aabb.copy();
 player.collisionAABB.x = player.x;
 player.collisionAABB.y = player.y;
 player.oldCollisionAABB = player.collisionAABB.copy();
-stage.addChild(player);
+scrollLayer.addChild(player);
 
 var triggerShapes = false;
 var triggerGun = false;
@@ -131,9 +132,10 @@ var testButton = new DisplayButton({
   height: 50,
   click: function (e) {
     triggerShapes = true;
+    console.log('test button clicked');
   }
 });
-stage.addChild(testButton);
+debugStage.addChild(testButton);
 
 var testButtonDisplayRect = new DisplayRect({
   width: testButton.width,
@@ -153,22 +155,22 @@ var testButtonText = new DisplayText({
 });
 testButton.addChild(testButtonText);
 
-function createWalls(canvasAABB, aabb, doorWidth) {
-  var topWallMidpoint = (canvasAABB.getTop() + aabb.getTop()) / 2,
-      bottomWallMidpoint = (canvasAABB.getBottom() + aabb.getBottom()) / 2,
-      leftWallMidpoint = (canvasAABB.getLeft() + aabb.getLeft()) / 2,
-      rightWallMidpoint = (canvasAABB.getRight() + aabb.getRight()) / 2,
-      leftThickness = Math.abs(canvasAABB.getLeft() - aabb.getLeft()),
-      topThickness = Math.abs(canvasAABB.getTop() - aabb.getTop()),
-      rightThickness = Math.abs(canvasAABB.getRight() - aabb.getRight()),
-      bottomThickness = Math.abs(canvasAABB.getBottom() - aabb.getBottom()),
-      topBottomWallLength = (canvasAABB.getWidth() - doorWidth) / 2,
-      leftRightWallLength = (canvasAABB.getHeight() - doorWidth) / 2,
+function createWalls(roomAABB, innerAABB, doorWidth) {
+  var topWallMidpoint = (roomAABB.getTop() + innerAABB.getTop()) / 2,
+      bottomWallMidpoint = (roomAABB.getBottom() + innerAABB.getBottom()) / 2,
+      leftWallMidpoint = (roomAABB.getLeft() + innerAABB.getLeft()) / 2,
+      rightWallMidpoint = (roomAABB.getRight() + innerAABB.getRight()) / 2,
+      leftThickness = Math.abs(roomAABB.getLeft() - innerAABB.getLeft()),
+      topThickness = Math.abs(roomAABB.getTop() - innerAABB.getTop()),
+      rightThickness = Math.abs(roomAABB.getRight() - innerAABB.getRight()),
+      bottomThickness = Math.abs(roomAABB.getBottom() - innerAABB.getBottom()),
+      topBottomWallLength = (roomAABB.getWidth() - doorWidth) / 2,
+      leftRightWallLength = (roomAABB.getHeight() - doorWidth) / 2,
       walls = [];
   
   var topLeftWall = new DisplayRect({
     aabb: {
-      x: canvasAABB.getLeft() + topBottomWallLength / 2,
+      x: roomAABB.getLeft() + topBottomWallLength / 2,
       y: topWallMidpoint,
       hw: topBottomWallLength / 2,
       hh: topThickness / 2
@@ -178,7 +180,7 @@ function createWalls(canvasAABB, aabb, doorWidth) {
   walls.push(topLeftWall);
   var topRightWall = new DisplayRect({
     aabb: {
-      x: canvasAABB.getRight() - topBottomWallLength / 2,
+      x: roomAABB.getRight() - topBottomWallLength / 2,
       y: topWallMidpoint,
       hw: topBottomWallLength / 2,
       hh: topThickness / 2
@@ -189,7 +191,7 @@ function createWalls(canvasAABB, aabb, doorWidth) {
   var rightTopWall = new DisplayRect({
     aabb: {
       x: rightWallMidpoint,
-      y: canvasAABB.getTop() + leftRightWallLength / 2,
+      y: roomAABB.getTop() + leftRightWallLength / 2,
       hw: rightThickness / 2,
       hh: leftRightWallLength / 2
     },
@@ -199,7 +201,7 @@ function createWalls(canvasAABB, aabb, doorWidth) {
   var rightBottomWall = new DisplayRect({
     aabb: {
       x: rightWallMidpoint,
-      y: canvasAABB.getBottom() - leftRightWallLength / 2,
+      y: roomAABB.getBottom() - leftRightWallLength / 2,
       hw: rightThickness / 2,
       hh: leftRightWallLength / 2
     },
@@ -208,7 +210,7 @@ function createWalls(canvasAABB, aabb, doorWidth) {
   walls.push(rightBottomWall);
   var bottomLeftWall = new DisplayRect({
     aabb: {
-      x: canvasAABB.getLeft() + topBottomWallLength / 2,
+      x: roomAABB.getLeft() + topBottomWallLength / 2,
       y: bottomWallMidpoint,
       hw: topBottomWallLength / 2,
       hh: bottomThickness / 2
@@ -218,7 +220,7 @@ function createWalls(canvasAABB, aabb, doorWidth) {
   walls.push(bottomLeftWall);
   var bottomRightWall = new DisplayRect({
     aabb: {
-      x: canvasAABB.getRight() - topBottomWallLength / 2,
+      x: roomAABB.getRight() - topBottomWallLength / 2,
       y: bottomWallMidpoint,
       hw: topBottomWallLength / 2,
       hh: bottomThickness / 2
@@ -229,7 +231,7 @@ function createWalls(canvasAABB, aabb, doorWidth) {
   var leftTopWall = new DisplayRect({
     aabb: {
       x: leftWallMidpoint,
-      y: canvasAABB.getTop() + leftRightWallLength / 2,
+      y: roomAABB.getTop() + leftRightWallLength / 2,
       hw: leftThickness / 2,
       hh: leftRightWallLength / 2
     },
@@ -239,7 +241,7 @@ function createWalls(canvasAABB, aabb, doorWidth) {
   var leftBottomWall = new DisplayRect({
     aabb: {
       x: leftWallMidpoint,
-      y: canvasAABB.getBottom() - leftRightWallLength / 2,
+      y: roomAABB.getBottom() - leftRightWallLength / 2,
       hw: leftThickness / 2,
       hh: leftRightWallLength / 2
     },
@@ -249,11 +251,45 @@ function createWalls(canvasAABB, aabb, doorWidth) {
   return walls;
 }
 
-walls = createWalls(canvasAABB, roomAABB, doorWidth);
+var maze = Maze.generate(Date.now());
+var startVec = new Vec2(0, 0);
+var roomAABBs = [];
+maze.mazeArray.forEach(function (rows, row) {
+  rows.forEach(function (room, col) {
+    if (room) {
+      var x = col * canvas.width,
+          y = row * canvas.height,
+          roomAABB = new AABB({
+            x: x,
+            y: y,
+            hw: canvas.width / 2,
+            hh: canvas.height / 2
+          }),
+          innerRoomAABB = new AABB({
+            x: x,
+            y: y,
+            hw: canvas.width / 2 - 20,
+            hh: canvas.height / 2 - 20
+          });
+      if (room === 1) {
+        startVec.x = x;
+        startVec.y = y;
+      }
+      walls = walls.concat(createWalls(roomAABB, innerRoomAABB, doorWidth));
+      roomAABBs.push(roomAABB);
+    }
+  });
+});
 
 walls.forEach(function (wall) {
-  stage.addChild(wall);
+  scrollLayer.addChild(wall);
 });
+
+player.x = startVec.x;
+player.y = startVec.y;
+
+scrollLayer.x = canvas.width / 2 - startVec.x;
+scrollLayer.y = canvas.height / 2 - startVec.y;
 
 var debugMouseDisplay = new DisplayText({
   text: 'rawrawr',
@@ -263,40 +299,18 @@ var debugMouseDisplay = new DisplayText({
   y: 5,
   color: '#ffffff'
 });
-stage.addChild(debugMouseDisplay);
+debugStage.addChild(debugMouseDisplay);
 
 function render(elapsed) {
   // Clear the screen
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
-  stage.preRender(elapsed);
-  stage.render(elapsed);
-  stage.postRender(elapsed);
+  debugStage.preRender(elapsed);
+  debugStage.render(elapsed);
+  debugStage.postRender(elapsed);
 }
 function logicUpdate(elapsed) {
   var i;
-  if (mouseDownChanged) {
-    if (mouseDown && !buttonDowned) {
-      for (i = stage.buttons.length - 1; i >= 0 && !buttonDowned; i--) {
-        var button = stage.buttons[i];
-        if (button.isStageVisible()) {
-          var stagePos = button.getStagePos();
-          if (button.aabb.contains(mouseVec.x - stagePos.x, mouseVec.y - stagePos.y)) {
-            buttonDowned = button;
-          }
-        }
-      }
-    } else if (!mouseDown && buttonDowned) {
-      var stagePos = buttonDowned.getStagePos();
-      if (buttonDowned.aabb.contains(mouseVec.x - stagePos.x, mouseVec.y - stagePos.y)) {
-        buttonDowned.click(mouseVec);
-      }
-      buttonDowned = null;
-    }
-    if (mouseDown && !buttonDowned) {
-      triggerGun = true;
-    }
-  }
   
   //indexes
   var bulletsToRemove = [];
@@ -309,20 +323,34 @@ function logicUpdate(elapsed) {
   });
   for (i = bulletsToRemove.length - 1; i >= 0; i--) {
     var b = bullets.splice(bulletsToRemove[i], 1)[0];
-    stage.removeChild(b);
-    console.log('removed');
+    debugStage.removeChild(b);
   }
   
-  if (kbKeys[Keys.LEFT] || kbKeys[Keys.A]) {
+  if (kbKeys[Keys.LEFT]) {
+    scrollLayer.dx = playerSpeed;
+  } else if (kbKeys[Keys.RIGHT]) {
+    scrollLayer.dx = -playerSpeed;
+  } else {
+    scrollLayer.dx = 0;
+  }
+  if (kbKeys[Keys.UP]) {
+    scrollLayer.dy = playerSpeed;
+  } else if (kbKeys[Keys.DOWN]) {
+    scrollLayer.dy = -playerSpeed;
+  } else {
+    scrollLayer.dy = 0;
+  }
+  
+  if (kbKeys[Keys.A]) {
     player.dx = -playerSpeed;
-  } else if (kbKeys[Keys.RIGHT] || kbKeys[Keys.D]) {
+  } else if (kbKeys[Keys.D]) {
     player.dx = playerSpeed;
   } else {
     player.dx = 0;
   }
-  if (kbKeys[Keys.UP] || kbKeys[Keys.W]) {
+  if (kbKeys[Keys.W]) {
     player.dy = -playerSpeed;
-  } else if (kbKeys[Keys.DOWN] || kbKeys[Keys.S]) {
+  } else if (kbKeys[Keys.S]) {
     player.dy = playerSpeed;
   } else {
     player.dy = 0;
@@ -365,8 +393,15 @@ function logicUpdate(elapsed) {
   });
   debugMouseDisplay.text = 'collision: ' + collision;
   
+  roomAABBs.forEach(function (roomAABB) {
+    if (roomAABB.contains(player.x, player.y)) {
+      scrollLayer.x = canvas.width / 2 - roomAABB.x;
+      scrollLayer.y = canvas.height / 2 - roomAABB.y;
+    }
+  });
+  
   if (triggerGun) {
-    var bulletVelocity = mouseVec.copy();
+    var bulletVelocity = cursorMgr.vec.copy();
     bulletVelocity.x -= player.x;
     bulletVelocity.y -= player.y;
     bulletVelocity.normalize();
@@ -381,12 +416,14 @@ function logicUpdate(elapsed) {
       color: rand.pick(colors)
     });
     bullets.push(bullet);
-    stage.addChild(bullet);
+    debugStage.addChild(bullet);
   }
+  
+  scrollLayer.update(elapsed);
+  currentStage.update(elapsed);
   
   triggerShapes = false;
   triggerGun = false;
-  mouseDownChanged = false;
   kbChanged = false;
 }
 

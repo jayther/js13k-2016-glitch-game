@@ -2,10 +2,10 @@ var extend = require('./extend');
 
 function Appliable() {
 }
-Appliable.prototype = Object.create({
+Appliable.prototype = {
   applyOptions: function (defaults, options) {
     extend(this, extend(defaults || {}, options || {}));
   }
-});
+};
 
 module.exports = Appliable;

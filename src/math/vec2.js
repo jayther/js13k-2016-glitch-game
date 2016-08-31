@@ -38,6 +38,9 @@ Vec2.prototype = Object.create({
   setAngle: function (angle) {
     this.x = Math.cos(angle);
     this.y = Math.sin(angle);
+  },
+  equals: function (v) {
+    return this.x === v.x && this.y === v.y;
   }
 });
 
