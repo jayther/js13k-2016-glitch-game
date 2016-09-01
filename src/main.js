@@ -18,6 +18,7 @@ var rand = rng();
 
 var player = null;
 var bullets = [];
+var currentRoom = null;
 var colors = [
   '#7FDBFF', '#0074D9', '#01FF70', '#001F3F', '#39CCCC',
   '#3D9970', '#2ECC40', '#FF4136', '#85144B', '#FF851B',
@@ -41,6 +42,7 @@ var playerSpeed = 200;
 var bulletSpeed = 1000;
 
 var walls = [];
+var wallCollideAABBs = [];
 
 var currentStage = null;
 
@@ -102,6 +104,10 @@ var debugStage = new DisplayItemContainer({
   isStage: true,
   ctx: ctx
 });
+/*debugStage.scaleX = 0.5;
+debugStage.scaleY = 0.5;
+debugStage.x = canvas.width / 4;
+debugStage.y = canvas.height / 4;*/
 currentStage = debugStage;
 
 var scrollLayer = new DisplayItemContainer();
@@ -155,134 +161,266 @@ var testButtonText = new DisplayText({
 });
 testButton.addChild(testButtonText);
 
-function createWalls(roomAABB, innerAABB, doorWidth) {
-  var topWallMidpoint = (roomAABB.getTop() + innerAABB.getTop()) / 2,
-      bottomWallMidpoint = (roomAABB.getBottom() + innerAABB.getBottom()) / 2,
-      leftWallMidpoint = (roomAABB.getLeft() + innerAABB.getLeft()) / 2,
-      rightWallMidpoint = (roomAABB.getRight() + innerAABB.getRight()) / 2,
-      leftThickness = Math.abs(roomAABB.getLeft() - innerAABB.getLeft()),
-      topThickness = Math.abs(roomAABB.getTop() - innerAABB.getTop()),
-      rightThickness = Math.abs(roomAABB.getRight() - innerAABB.getRight()),
-      bottomThickness = Math.abs(roomAABB.getBottom() - innerAABB.getBottom()),
-      topBottomWallLength = (roomAABB.getWidth() - doorWidth) / 2,
-      leftRightWallLength = (roomAABB.getHeight() - doorWidth) / 2,
-      walls = [];
+function assignWalls(maze) {
+  var rooms = maze.rooms,
+      doorWidth = maze.doorWidth,
+      visualWalls = [],
+      rand = rng(maze.seed);
+  rooms.forEach(function (rows, row) {
+    rows.forEach(function (room, col) {
+      var color, aabb;
+      if (room.type) {
+        //left wall
+        color = rand.pick(colors);
+        if (room.left) {
+          aabb = AABB.createRect({
+            left: room.outerAABB.getLeft(),
+            top: room.outerAABB.getTop(),
+            right: room.innerAABB.getLeft(),
+            bottom: room.outerAABB.y - doorWidth / 2
+          });
+          visualWalls.push(new DisplayRect({
+            aabb: aabb,
+            color: color
+          }));
+          room.wallAABBs.push(aabb);
+          aabb = AABB.createRect({
+            left: room.outerAABB.getLeft(),
+            top: room.outerAABB.y + doorWidth / 2,
+            right: room.innerAABB.getLeft(),
+            bottom: room.outerAABB.getBottom()
+          });
+          room.wallAABBs.push(aabb);
+          visualWalls.push(new DisplayRect({
+            aabb: aabb,
+            color: color
+          }));
+        } else {
+          aabb = AABB.createRect({
+            left: room.outerAABB.getLeft(),
+            top: room.outerAABB.getTop(),
+            right: room.innerAABB.getLeft(),
+            bottom: room.outerAABB.getBottom()
+          });
+          room.wallAABBs.push(aabb);
+          visualWalls.push(new DisplayRect({
+            aabb: aabb,
+            color: color
+          }));
+        }
+        //top wall
+        color = rand.pick(colors);
+        if (room.top) {
+          aabb = AABB.createRect({
+            left: room.outerAABB.getLeft(),
+            top: room.outerAABB.getTop(),
+            right: room.outerAABB.x - doorWidth / 2,
+            bottom: room.innerAABB.getTop()
+          });
+          room.wallAABBs.push(aabb);
+          visualWalls.push(new DisplayRect({
+            aabb: aabb,
+            color: color
+          }));
+          aabb = AABB.createRect({
+            left: room.outerAABB.x + doorWidth / 2,
+            top: room.outerAABB.getTop(),
+            right: room.outerAABB.getRight(),
+            bottom: room.innerAABB.getTop()
+          });
+          room.wallAABBs.push(aabb);
+          visualWalls.push(new DisplayRect({
+            aabb: aabb,
+            color: color
+          }));
+        } else {
+          aabb = AABB.createRect({
+            left: room.outerAABB.getLeft(),
+            top: room.outerAABB.getTop(),
+            right: room.outerAABB.getRight(),
+            bottom: room.innerAABB.getTop()
+          });
+          room.wallAABBs.push(aabb);
+          visualWalls.push(new DisplayRect({
+            aabb: aabb,
+            color: color
+          }));
+        }
+        //right wall
+        color = rand.pick(colors);
+        if (room.right) {
+          aabb = AABB.createRect({
+            left: room.innerAABB.getRight(),
+            top: room.outerAABB.getTop(),
+            right: room.outerAABB.getRight(),
+            bottom: room.outerAABB.y - doorWidth / 2
+          });
+          room.wallAABBs.push(aabb);
+          visualWalls.push(new DisplayRect({
+            aabb: aabb,
+            color: color
+          }));
+          aabb = AABB.createRect({
+            left: room.innerAABB.getRight(),
+            top: room.outerAABB.y + doorWidth / 2,
+            right: room.outerAABB.getRight(),
+            bottom: room.outerAABB.getBottom()
+          });
+          room.wallAABBs.push(aabb);
+          visualWalls.push(new DisplayRect({
+            aabb: aabb,
+            color: color
+          }));
+        } else {
+          aabb = AABB.createRect({
+            left: room.innerAABB.getRight(),
+            top: room.outerAABB.getTop(),
+            right: room.outerAABB.getRight(),
+            bottom: room.outerAABB.getBottom()
+          });
+          room.wallAABBs.push(aabb);
+          visualWalls.push(new DisplayRect({
+            aabb: aabb,
+            color: color
+          }));
+        }
+        //bottom wall
+        color = rand.pick(colors);
+        if (room.bottom) {
+          aabb = AABB.createRect({
+            left: room.outerAABB.getLeft(),
+            top: room.innerAABB.getBottom(),
+            right: room.outerAABB.x - doorWidth / 2,
+            bottom: room.outerAABB.getBottom()
+          });
+          room.wallAABBs.push(aabb);
+          visualWalls.push(new DisplayRect({
+            aabb: aabb,
+            color: color
+          }));
+          aabb = AABB.createRect({
+            left: room.outerAABB.x + doorWidth / 2,
+            top: room.innerAABB.getBottom(),
+            right: room.outerAABB.getRight(),
+            bottom: room.outerAABB.getBottom()
+          });
+          room.wallAABBs.push(aabb);
+          visualWalls.push(new DisplayRect({
+            aabb: aabb,
+            color: color
+          }));
+        } else {
+          aabb = AABB.createRect({
+            left: room.outerAABB.getLeft(),
+            top: room.innerAABB.getBottom(),
+            right: room.outerAABB.getRight(),
+            bottom: room.outerAABB.getBottom()
+          });
+          room.wallAABBs.push(aabb);
+          visualWalls.push(new DisplayRect({
+            aabb: aabb,
+            color: color
+          }));
+        }
+      }
+    });
+  });
   
-  var topLeftWall = new DisplayRect({
-    aabb: {
-      x: roomAABB.getLeft() + topBottomWallLength / 2,
-      y: topWallMidpoint,
-      hw: topBottomWallLength / 2,
-      hh: topThickness / 2
-    },
-    color: rand.pick(colors)
-  });
-  walls.push(topLeftWall);
-  var topRightWall = new DisplayRect({
-    aabb: {
-      x: roomAABB.getRight() - topBottomWallLength / 2,
-      y: topWallMidpoint,
-      hw: topBottomWallLength / 2,
-      hh: topThickness / 2
-    },
-    color: rand.pick(colors)
-  });
-  walls.push(topRightWall);
-  var rightTopWall = new DisplayRect({
-    aabb: {
-      x: rightWallMidpoint,
-      y: roomAABB.getTop() + leftRightWallLength / 2,
-      hw: rightThickness / 2,
-      hh: leftRightWallLength / 2
-    },
-    color: rand.pick(colors)
-  });
-  walls.push(rightTopWall);
-  var rightBottomWall = new DisplayRect({
-    aabb: {
-      x: rightWallMidpoint,
-      y: roomAABB.getBottom() - leftRightWallLength / 2,
-      hw: rightThickness / 2,
-      hh: leftRightWallLength / 2
-    },
-    color: rand.pick(colors)
-  });
-  walls.push(rightBottomWall);
-  var bottomLeftWall = new DisplayRect({
-    aabb: {
-      x: roomAABB.getLeft() + topBottomWallLength / 2,
-      y: bottomWallMidpoint,
-      hw: topBottomWallLength / 2,
-      hh: bottomThickness / 2
-    },
-    color: rand.pick(colors)
-  });
-  walls.push(bottomLeftWall);
-  var bottomRightWall = new DisplayRect({
-    aabb: {
-      x: roomAABB.getRight() - topBottomWallLength / 2,
-      y: bottomWallMidpoint,
-      hw: topBottomWallLength / 2,
-      hh: bottomThickness / 2
-    },
-    color: rand.pick(colors)
-  });
-  walls.push(bottomRightWall);
-  var leftTopWall = new DisplayRect({
-    aabb: {
-      x: leftWallMidpoint,
-      y: roomAABB.getTop() + leftRightWallLength / 2,
-      hw: leftThickness / 2,
-      hh: leftRightWallLength / 2
-    },
-    color: rand.pick(colors)
-  });
-  walls.push(leftTopWall);
-  var leftBottomWall = new DisplayRect({
-    aabb: {
-      x: leftWallMidpoint,
-      y: roomAABB.getBottom() - leftRightWallLength / 2,
-      hw: leftThickness / 2,
-      hh: leftRightWallLength / 2
-    },
-    color: rand.pick(colors)
-  });
-  walls.push(leftBottomWall);
-  return walls;
+  return visualWalls;
 }
 
-var maze = Maze.generate(Date.now());
+function assignEnemies(maze) {
+  var enemies = [];
+  maze.rooms.forEach(function (rows, row) {
+    rows.forEach(function (room, col) {
+      if (room.type > 2) {
+        var roomEnemies = [];
+        var rand = rng(maze.seed + room.type * row + col);
+        var spawnArea = room.innerAABB.copy();
+        spawnArea.hw -= 40;
+        spawnArea.hh -= 40;
+        var numEnemies = rand.range(2, 10), i, enemy;
+        for (i = 0; i < numEnemies; i++) {
+          enemy = new DisplayRect({
+            x: rand.range(spawnArea.getLeft(), spawnArea.getRight()),
+            y: rand.range(spawnArea.getTop(), spawnArea.getBottom()),
+            color: rand.pick(colors),
+            aabb: {
+              hw: 20,
+              hh: 20
+            }
+          });
+          enemy.collideAABB = enemy.aabb.copy();
+          enemy.collideAABB.x = enemy.x;
+          enemy.collideAABB.y = enemy.y;
+          roomEnemies.push(enemy);
+          enemies.push(enemy);
+        }
+        room.enemies = roomEnemies;
+      }
+    });
+  });
+  return enemies;
+}
+
+function createRoomLabels(maze) {
+  var labels = [];
+  maze.rooms.forEach(function (rows, row) {
+    rows.forEach(function (room, col) {
+      if (room.type) {
+        var text;
+        if (room.type === 1) {
+          text = 'START';
+        } else if (room.type === 2) {
+          text = 'FINISH';
+        } else {
+          text = 'TYPE: ' + room.type;
+        }
+        labels.push(new DisplayText({
+          text: text,
+          textAlign: 'left',
+          textBaseline: 'bottom',
+          x: room.innerAABB.getLeft() + 10,
+          y: room.innerAABB.getBottom() - 10,
+          color: '#ffffff'
+        }));
+      }
+    });
+  });
+  return labels;
+}
+
+var maze = Maze.generate(
+  Date.now(),
+  AABB.createRect({ width: canvas.width, height: canvas.height}),
+  AABB.createRect({ width: canvas.width - 40, height: canvas.height - 40 }),
+  doorWidth
+);
 var startVec = new Vec2(0, 0);
 var roomAABBs = [];
-maze.mazeArray.forEach(function (rows, row) {
-  rows.forEach(function (room, col) {
-    if (room) {
-      var x = col * canvas.width,
-          y = row * canvas.height,
-          roomAABB = new AABB({
-            x: x,
-            y: y,
-            hw: canvas.width / 2,
-            hh: canvas.height / 2
-          }),
-          innerRoomAABB = new AABB({
-            x: x,
-            y: y,
-            hw: canvas.width / 2 - 20,
-            hh: canvas.height / 2 - 20
-          });
-      if (room === 1) {
-        startVec.x = x;
-        startVec.y = y;
-      }
-      walls = walls.concat(createWalls(roomAABB, innerRoomAABB, doorWidth));
-      roomAABBs.push(roomAABB);
-    }
-  });
-});
+walls = assignWalls(maze);
 
 walls.forEach(function (wall) {
   scrollLayer.addChild(wall);
+});
+
+maze.rooms.forEach(function (rows, row) {
+  rows.forEach(function (room, col) {
+    if (room.type === 1) {
+      startVec.x = room.outerAABB.x;
+      startVec.y = room.outerAABB.y;
+      currentRoom = room;
+    }
+  });
+});
+var enemies = assignEnemies(maze);
+enemies.forEach(function (enemy) {
+  scrollLayer.addChild(enemy);
+});
+
+var roomLabels = createRoomLabels(maze);
+roomLabels.forEach(function (label) {
+  scrollLayer.addChild(label);
 });
 
 player.x = startVec.x;
@@ -314,29 +452,43 @@ function logicUpdate(elapsed) {
   
   //indexes
   var bulletsToRemove = [];
-  bullets.forEach(function (bullet) {
+  var enemiesToRemove = [];
+  bullets.forEach(function (bullet, index) {
     bullet.life -= elapsed;
     bullet.update(elapsed);
-    if (bullet.life <= 0) {
-      bulletsToRemove.push(bullet);
+    if (!currentRoom.innerAABB.contains(bullet.x, bullet.y)) {
+      bulletsToRemove.push(index);
+    } else if (bullet.life <= 0) {
+      bulletsToRemove.push(index);
+    } else {
+      currentRoom.enemies.forEach(function (enemy, eIndex) {
+        if (enemy.collideAABB.contains(bullet.x, bullet.y)) {
+          bulletsToRemove.push(index);
+          enemiesToRemove.push(eIndex);
+        }
+      });
     }
   });
   for (i = bulletsToRemove.length - 1; i >= 0; i--) {
     var b = bullets.splice(bulletsToRemove[i], 1)[0];
-    debugStage.removeChild(b);
+    scrollLayer.removeChild(b);
+  }
+  for (i = enemiesToRemove.length - 1; i >= 0; i--) {
+    var e = currentRoom.enemies.splice(enemiesToRemove[i], 1)[0];
+    scrollLayer.removeChild(e);
   }
   
   if (kbKeys[Keys.LEFT]) {
-    scrollLayer.dx = playerSpeed;
+    scrollLayer.dx = playerSpeed * 3;
   } else if (kbKeys[Keys.RIGHT]) {
-    scrollLayer.dx = -playerSpeed;
+    scrollLayer.dx = -playerSpeed * 3;
   } else {
     scrollLayer.dx = 0;
   }
   if (kbKeys[Keys.UP]) {
-    scrollLayer.dy = playerSpeed;
+    scrollLayer.dy = playerSpeed * 3;
   } else if (kbKeys[Keys.DOWN]) {
-    scrollLayer.dy = -playerSpeed;
+    scrollLayer.dy = -playerSpeed * 3;
   } else {
     scrollLayer.dy = 0;
   }
@@ -363,27 +515,27 @@ function logicUpdate(elapsed) {
   player.collisionAABB.y = player.y;
   
   var collision = false;
-  walls.forEach(function (wall) {
+  currentRoom.wallAABBs.forEach(function (wall) {
     var clipped = false;
-    if (wall.aabb.collidesAABB(player.collisionAABB)) {
+    if (wall.collidesAABB(player.collisionAABB)) {
       collision = true;
-      if (player.collisionAABB.getRight() > wall.aabb.getLeft() &&
-          player.oldCollisionAABB.getRight() <= wall.aabb.getLeft()) {
+      if (player.collisionAABB.getRight() > wall.getLeft() &&
+          player.oldCollisionAABB.getRight() <= wall.getLeft()) {
         clipped = true;
-        player.x = wall.aabb.getLeft() - player.collisionAABB.hw;
-      } else if (player.collisionAABB.getLeft() < wall.aabb.getRight() &&
-                 player.oldCollisionAABB.getLeft() >= wall.aabb.getRight()) {
+        player.x = wall.getLeft() - player.collisionAABB.hw;
+      } else if (player.collisionAABB.getLeft() < wall.getRight() &&
+                 player.oldCollisionAABB.getLeft() >= wall.getRight()) {
         clipped = true;
-        player.x = wall.aabb.getRight() + player.collisionAABB.hw;
+        player.x = wall.getRight() + player.collisionAABB.hw;
       }
-      if (player.collisionAABB.getTop() < wall.aabb.getBottom() &&
-          player.oldCollisionAABB.getTop() >= wall.aabb.getBottom()) {
+      if (player.collisionAABB.getTop() < wall.getBottom() &&
+          player.oldCollisionAABB.getTop() >= wall.getBottom()) {
         clipped = true;
-        player.y = wall.aabb.getBottom() + player.collisionAABB.hh;
-      } else if (player.collisionAABB.getBottom() > wall.aabb.getTop() &&
-                 player.oldCollisionAABB.getBottom() <= wall.aabb.getTop()) {
+        player.y = wall.getBottom() + player.collisionAABB.hh;
+      } else if (player.collisionAABB.getBottom() > wall.getTop() &&
+                 player.oldCollisionAABB.getBottom() <= wall.getTop()) {
         clipped = true;
-        player.y = wall.aabb.getTop() - player.collisionAABB.hh;
+        player.y = wall.getTop() - player.collisionAABB.hh;
       }
     }
     if (clipped) {
@@ -393,15 +545,26 @@ function logicUpdate(elapsed) {
   });
   debugMouseDisplay.text = 'collision: ' + collision;
   
-  roomAABBs.forEach(function (roomAABB) {
-    if (roomAABB.contains(player.x, player.y)) {
-      scrollLayer.x = canvas.width / 2 - roomAABB.x;
-      scrollLayer.y = canvas.height / 2 - roomAABB.y;
-    }
-  });
+  var refocusToRoom = null;
+  if (currentRoom.left && currentRoom.left.outerAABB.contains(player.x, player.y)) {
+    refocusToRoom = currentRoom.left;
+  } else if (currentRoom.top && currentRoom.top.outerAABB.contains(player.x, player.y)) {
+    refocusToRoom = currentRoom.top;
+  } else if (currentRoom.right && currentRoom.right.outerAABB.contains(player.x, player.y)) {
+    refocusToRoom = currentRoom.right;
+  } else if (currentRoom.bottom && currentRoom.bottom.outerAABB.contains(player.x, player.y)) {
+    refocusToRoom = currentRoom.bottom;
+  }
+  if (refocusToRoom) {
+    scrollLayer.x = canvas.width / 2 - refocusToRoom.outerAABB.x;
+    scrollLayer.y = canvas.height / 2 - refocusToRoom.outerAABB.y;
+    currentRoom = refocusToRoom;
+  }
   
   if (triggerGun) {
     var bulletVelocity = cursorMgr.vec.copy();
+    bulletVelocity.x -= scrollLayer.x;
+    bulletVelocity.y -= scrollLayer.y;
     bulletVelocity.x -= player.x;
     bulletVelocity.y -= player.y;
     bulletVelocity.normalize();
@@ -416,7 +579,7 @@ function logicUpdate(elapsed) {
       color: rand.pick(colors)
     });
     bullets.push(bullet);
-    debugStage.addChild(bullet);
+    scrollLayer.addChild(bullet);
   }
   
   scrollLayer.update(elapsed);

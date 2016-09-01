@@ -1,16 +1,83 @@
 var inherit = require('../util/inherit'),
     Vec2 = require('../math/vec2'),
     Appliable = require('../util/appliable'),
+    AABB = require('../math/aabb'),
     rng = require('../rng');
 
 function Maze(options) {
   this.applyOptions({
     seed: 0,
-    mazeArray: []
+    mazeArray: [],
+    roomSizeAABB: new AABB(),
+    innerRoomSizeAABB: new AABB(),
+    doorWidth: 0
   }, options);
+  this.rooms = null;
+  this.init();
 }
 
-Maze.generate = function (seed) {
+Maze.prototype = inherit(Appliable, {
+  init: function () {
+    var rooms = [];
+    var roomSizeAABB = this.roomSizeAABB,
+        innerRoomSizeAABB = this.innerRoomSizeAABB;
+    console.log(this);
+    //create rooms
+    this.mazeArray.forEach(function (rows, row) {
+      rooms.push([]);
+      rows.forEach(function (protoRoom, col) {
+        var room = {
+          type: protoRoom,
+          left: null,
+          top: null,
+          right: null,
+          bottom: null,
+          outerAABB: null,
+          innerAABB: null,
+          wallAABBs: [],
+          enemies: []
+        };
+        if (protoRoom) {
+          room.outerAABB = new AABB({
+            x: col * roomSizeAABB.getWidth(),
+            y: row * roomSizeAABB.getHeight(),
+            hw: roomSizeAABB.hw,
+            hh: roomSizeAABB.hh
+          });
+          room.innerAABB = new AABB({
+            x: col * roomSizeAABB.getWidth(),
+            y: row * roomSizeAABB.getHeight(),
+            hw: innerRoomSizeAABB.hw,
+            hh: innerRoomSizeAABB.hh
+          });
+        }
+        rooms[row].push(room);
+      });
+    });
+    //determine connections
+    rooms.forEach(function (rows, row) {
+      rows.forEach(function (room, col) {
+        if (col > 0 && rooms[row][col - 1].type) {
+          room.left = rooms[row][col - 1];
+        }
+        if (col < rows.length - 1 && rooms[row][col + 1].type) {
+          room.right = rooms[row][col + 1];
+        }
+        if (row > 0 && rooms[row - 1][col].type) {
+          room.top = rooms[row - 1][col];
+        }
+        if (row < rooms.length - 1 && rooms[row + 1][col].type) {
+          room.bottom = rooms[row + 1][col];
+        }
+      });
+    });
+    
+    this.rooms = rooms;
+    
+  }
+});
+
+Maze.generate = function (seed, roomSizeAABB, innerRoomSizeAABB, doorWidth) {
   var rand = rng(seed);
   var roomsApart = rand.range(4, 7);
   var fillerRooms = rand.range(5, 10);
@@ -22,18 +89,68 @@ Maze.generate = function (seed) {
     [ new Vec2(1, 0), new Vec2(0, 1) ],
     [ new Vec2(1, 0), new Vec2(0, -1) ]
   ]);
+  var connectionTree = {};
+  connectionTree[start.y] = {};
+  connectionTree[start.y][start.x] = true;
+  var nonLandLocked = [start];
   var i, j, dir, next;
   //generate shortest path
   for (i = 0; i < roomsApart; i++) {
     dir = rand.pick(possibleDirs);
     next = new Vec2(mazeTree[i].x + dir.x, mazeTree[i].y + dir.y);
     mazeTree.push(next);
+    nonLandLocked.push(next); //impossible to generate landlocked rooms at this point
+    if (!connectionTree[next.y]) {
+      connectionTree[next.y] = {};
+    }
+    connectionTree[next.y][next.x] = true;
   }
   var end = next;
   //filler rooms
-  /*for (i = 0; i < fillerRooms; i++) {
-    
-  }*/
+  var room;
+  for (i = 0; i < fillerRooms; i++) {
+    var open = [], room = rand.pick(nonLandLocked);
+    if (!connectionTree[room.y - 1]) {
+      connectionTree[room.y - 1] = {};
+    }
+    if (!connectionTree[room.y + 1]) {
+      connectionTree[room.y + 1] = {};
+    }
+    if (!connectionTree[room.y][room.x - 1]) {
+      open.push(new Vec2(room.x - 1, room.y));
+    }
+    if (!connectionTree[room.y][room.x + 1]) {
+      open.push(new Vec2(room.x + 1, room.y));
+    }
+    if (!connectionTree[room.y - 1][room.x]) {
+      open.push(new Vec2(room.x, room.y - 1));
+    }
+    if (!connectionTree[room.y + 1][room.x]) {
+      open.push(new Vec2(room.x, room.y + 1));
+    }
+    next = rand.pick(open);
+    mazeTree.push(next);
+    //last one taken, so it's now landlocked
+    if (open.length === 1) {
+      nonLandLocked.splice(nonLandLocked.indexOf(room), 1);
+    }
+    //register in connection tree
+    connectionTree[next.y][next.x] = true;
+    //check if not landlocked
+    if (!connectionTree[next.y - 1]) {
+      connectionTree[next.y - 1] = {};
+    }
+    if (!connectionTree[next.y + 1]) {
+      connectionTree[next.y + 1] = {};
+    }
+    if (!(connectionTree[next.y][next.x - 1]
+          && connectionTree[next.y][next.x + 1]
+          && connectionTree[next.y - 1][next.x]
+          && connectionTree[next.y + 1][next.x]
+         )) {
+      nonLandLocked.push(next);
+    }
+  }
   //determine bounds
   var bounds = { left: 0, top: 0, right: 0, bottom: 0 };
   mazeTree.forEach(function (room) {
@@ -62,15 +179,17 @@ Maze.generate = function (seed) {
     }
   }
   mazeTree.forEach(function (room) {
-    mazeArr[-bounds.top + room.y][-bounds.left + room.x] = start.equals(room) ? 1 : end.equals(room) ? 2 : rand.range(3, 10);
+    var row = -bounds.top + room.y,
+        col = -bounds.left + room.x;
+    mazeArr[row][col] = start.equals(room) ? 1 : end.equals(room) ? 2 : rand.range(3, 10);
   });
   return new Maze({
     seed: seed,
-    mazeArray: mazeArr
+    mazeArray: mazeArr,
+    roomSizeAABB: roomSizeAABB,
+    innerRoomSizeAABB: innerRoomSizeAABB,
+    doorWidth: doorWidth
   });
 };
-
-Maze.prototype = inherit(Appliable, {
-});
 
 module.exports = Maze;

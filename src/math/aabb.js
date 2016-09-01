@@ -40,5 +40,24 @@ AABB.prototype = inherit(Appliable, {
     return new AABB(this);
   }
 });
+AABB.createRect = function (options) {
+  var opts = options || {},
+      left = opts.left || opts.x || 0,
+      top = opts.top || opts.y || 0,
+      right = opts.right || 0,
+      bottom = opts.bottom || 0;
+  if (opts.hasOwnProperty('width')) {
+    right = left + opts.width;
+  }
+  if (opts.hasOwnProperty('height')) {
+    bottom = top + opts.height;
+  }
+  return new AABB({
+    x: (left + right) / 2,
+    y: (top + bottom) / 2,
+    hw: (right - left) / 2,
+    hh: (bottom - top) / 2
+  });
+};
 
 module.exports = AABB;
