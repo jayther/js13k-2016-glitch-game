@@ -137,6 +137,7 @@ Maze.generate = function (seed, roomSizeAABB, innerRoomSizeAABB, doorWidth) {
     //register in connection tree
     connectionTree[next.y][next.x] = true;
     //check if not landlocked
+    //check if new room not landlocked
     if (!connectionTree[next.y - 1]) {
       connectionTree[next.y - 1] = {};
     }
@@ -149,6 +150,23 @@ Maze.generate = function (seed, roomSizeAABB, innerRoomSizeAABB, doorWidth) {
           && connectionTree[next.y + 1][next.x]
          )) {
       nonLandLocked.push(next);
+    }
+    //recheck nonLandLocked rooms to ensure they're not landlocked
+    var j, r;
+    for (j = nonLandLocked.length - 1; j >= 0; j--) {
+      r = nonLandLocked[j];
+      if (!connectionTree[r.y - 1]) {
+        connectionTree[r.y - 1] = {};
+      }
+      if (!connectionTree[r.y + 1]) {
+        connectionTree[r.y + 1] = {};
+      }
+      if (connectionTree[r.y][r.x - 1]
+          && connectionTree[r.y][r.x + 1]
+          && connectionTree[r.y - 1][r.x]
+          && connectionTree[r.y + 1][r.x]) {
+        nonLandLocked.splice(j, 1);
+      }
     }
   }
   //determine bounds
