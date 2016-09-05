@@ -32,6 +32,12 @@ AABB.prototype = inherit(Appliable, {
     return Math.abs(this.x - aabb.x) < (this.hw + aabb.hw) &&
       Math.abs(this.y - aabb.y) < (this.hh + aabb.hh);
   },
+  containsAABB: function (aabb) {
+    return this.contains(aabb.getLeft(), aabb.getTop()) &&
+      this.contains(aabb.getRight(), aabb.getTop()) &&
+      this.contains(aabb.getRight(), aabb.getBottom()) &&
+      this.contains(aabb.getLeft(), aabb.getBottom());
+  },
   contains: function (x, y) {
     return x >= this.getLeft() && x < this.getRight() &&
       y >= this.getTop() && y < this.getBottom();
