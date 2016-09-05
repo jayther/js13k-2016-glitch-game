@@ -8,8 +8,6 @@ function DisplayItem(options) {
   this.applyOptions({
     x: 0,
     y: 0,
-    dx: 0,
-    dy: 0,
     visible: true,
     opacity: 1,
     angle: 0,
@@ -20,11 +18,15 @@ function DisplayItem(options) {
   }, options);
   this.parent = null;
   this.isButton = false;
+  this.vel = new Vec2();
+  this.accel = new Vec2();
 }
 DisplayItem.prototype = inherit(Dispatcher, Appliable, {
   update: function (elapsed) {
-    this.x += this.dx * elapsed;
-    this.y += this.dy * elapsed;
+    this.vel.x += this.accel.x * elapsed;
+    this.vel.y += this.accel.y * elapsed;
+    this.x += this.vel.x * elapsed;
+    this.y += this.vel.y * elapsed;
   },
   stageRender: function (elapsed) {
     this.preRender(elapsed);

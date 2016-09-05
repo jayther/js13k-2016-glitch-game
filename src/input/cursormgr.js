@@ -32,4 +32,4 @@ CursorMgr.prototype = inherit(Dispatcher, Appliable, {
   }
 });
 
-module.exports = CursorMgr;
+module.exports = new CursorMgr();

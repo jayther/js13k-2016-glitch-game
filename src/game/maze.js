@@ -21,7 +21,6 @@ Maze.prototype = inherit(Appliable, {
     var rooms = [];
     var roomSizeAABB = this.roomSizeAABB,
         innerRoomSizeAABB = this.innerRoomSizeAABB;
-    console.log(this);
     //create rooms
     this.mazeArray.forEach(function (rows, row) {
       rooms.push([]);
@@ -35,7 +34,8 @@ Maze.prototype = inherit(Appliable, {
           outerAABB: null,
           innerAABB: null,
           wallAABBs: [],
-          enemies: []
+          enemies: [],
+          endAABB: null
         };
         if (protoRoom) {
           room.outerAABB = new AABB({
@@ -73,7 +73,14 @@ Maze.prototype = inherit(Appliable, {
     });
     
     this.rooms = rooms;
-    
+  },
+  traverseRooms: function (fn) {
+    var rooms = this.rooms;
+    rooms.forEach(function (rows, row) {
+      rows.forEach(function (room, col) {
+        fn(room, col, row, rows, rooms);
+      });
+    });
   }
 });
 
@@ -136,7 +143,6 @@ Maze.generate = function (seed, roomSizeAABB, innerRoomSizeAABB, doorWidth) {
     }
     //register in connection tree
     connectionTree[next.y][next.x] = true;
-    //check if not landlocked
     //check if new room not landlocked
     if (!connectionTree[next.y - 1]) {
       connectionTree[next.y - 1] = {};

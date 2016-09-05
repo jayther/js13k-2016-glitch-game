@@ -13,6 +13,8 @@ function DisplayItemContainer(options) {
   }
   this.buttons = [];
   this.buttonDowned = null;
+  this.on('cursordown', this.triggerMouseDown.bind(this));
+  this.on('cursorup', this.triggerMouseUp.bind(this));
 }
 DisplayItemContainer.prototype = inherit(DisplayItem, {
   render: function (elapsed) {
