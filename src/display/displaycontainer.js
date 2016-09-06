@@ -17,6 +17,12 @@ function DisplayItemContainer(options) {
   this.on('cursorup', this.triggerMouseUp.bind(this));
 }
 DisplayItemContainer.prototype = inherit(DisplayItem, {
+  setStage: function (stage) {
+    this.stage = stage;
+    this.children.forEach(function (child) {
+      child.stage = stage;
+    });
+  },
   render: function (elapsed) {
     this.children.forEach(function (child) {
       child.stageRender(elapsed);
@@ -25,7 +31,7 @@ DisplayItemContainer.prototype = inherit(DisplayItem, {
   addChild: function (child) {
     this.children.push(child);
     child.parent = this;
-    child.stage = this.stage;
+    child.setStage(this.stage);
     if (child.isButton) {
       this.stage.addButton(child);
     }
@@ -35,7 +41,7 @@ DisplayItemContainer.prototype = inherit(DisplayItem, {
     if (index >= 0) {
       this.children.splice(index, 1);
       child.parent = null;
-      child.stage = null;
+      child.setStage(null);
     }
     if (child.isButton) {
       this.stage.removeButton(child);

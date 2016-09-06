@@ -19,10 +19,14 @@ function DisplayItem(options) {
   }, options);
   this.parent = null;
   this.isButton = false;
+  this.stage = null;
   this.vel = new Vec2();
   this.accel = new Vec2();
 }
 DisplayItem.prototype = inherit(Dispatcher, Appliable, {
+  setStage: function (stage) {
+    this.stage = stage;
+  },
   update: function (elapsed) {
     this.vel.x += this.accel.x * elapsed;
     this.vel.y += this.accel.y * elapsed;
