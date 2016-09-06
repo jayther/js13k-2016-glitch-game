@@ -14,7 +14,8 @@ function DisplayItem(options) {
     anchorX: 0,
     anchorY: 0,
     scaleX: 1,
-    scaleY: 1
+    scaleY: 1,
+    maxSpeed: Number.MAX_VALUE
   }, options);
   this.parent = null;
   this.isButton = false;
@@ -25,6 +26,10 @@ DisplayItem.prototype = inherit(Dispatcher, Appliable, {
   update: function (elapsed) {
     this.vel.x += this.accel.x * elapsed;
     this.vel.y += this.accel.y * elapsed;
+    if (this.vel.length2() > this.maxSpeed * this.maxSpeed) {
+      this.vel.normalize();
+      this.vel.multiply(this.maxSpeed);
+    }
     this.x += this.vel.x * elapsed;
     this.y += this.vel.y * elapsed;
   },
