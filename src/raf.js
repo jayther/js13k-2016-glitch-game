@@ -1,5 +1,5 @@
 // Holds last iteration timestamp.
-var time = 0;
+var time = 0, latestId = null, running = false;
 
 /**
  * Calls `fn` on next frame.
@@ -34,9 +34,12 @@ module.exports = {
    * @api public
    */
   start: function(fn) {
+    running = true;
     return raf(function tick(elapsed) {
       fn(elapsed);
-      raf(tick);
+      if (running) {
+        latestId = raf(tick);
+      }
     });
   },
   /**
@@ -46,6 +49,7 @@ module.exports = {
    * @api public
    */
   stop: function(id) {
-    window.cancelAnimationFrame(id);
+    running = false;
+    window.cancelAnimationFrame(id || latestId);
   }
 };
