@@ -4,7 +4,8 @@ var raf = require('./raf'),
     cursorMgr = require('./input/cursormgr'),
     kbMgr = require('./input/kbmgr'),
     DisplayRect = require('./display/displayrect'),
-    PlayStage = require('./game/playstage');
+    PlayStage = require('./game/playstage'),
+    Player = require('./game/player');
 
 var canvas = document.querySelector('#game');
 var ctx = canvas.getContext('2d');
@@ -18,6 +19,7 @@ var colors = [
   '#3D9970', '#2ECC40', '#FF4136', '#85144B', '#FF851B',
   '#B10DC9', '#FFDC00', '#F012BE',
 ];
+var playerSpeed = 200;
 
 var logicAccumulator = 0;
 var logicFrameRate = 1 / 30;
@@ -52,21 +54,20 @@ cursorMgr.on('cursorup', dispatchToCurrentStage);
 kbMgr.on('keydown', dispatchToCurrentStage);
 kbMgr.on('keyup', dispatchToCurrentStage);
 
-player = new DisplayRect({
+player = new Player({
   x: canvas.width / 2,
   y: canvas.height / 2,
-  aabb: {
+  collisionSizeAABB: new AABB({
     hw: 20,
     hh: 20
-  },
-  color: '#ffffff'
+  }),
+  maxSpeed: playerSpeed
 });
-player.collisionAABB = player.aabb.copy();
-player.collisionAABB.x = player.x;
-player.collisionAABB.y = player.y;
-player.oldCollisionAABB = player.collisionAABB.copy();
 
 function restartPlayStage(e) {
+  if (player.parent) {
+    player.parent.removeChild(player);
+  }
   var playStage = new PlayStage({
     ctx: ctx,
     viewSizeAABB: canvasAABB,

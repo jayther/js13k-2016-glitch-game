@@ -10,6 +10,7 @@ var DisplayContainer = require('../display/displaycontainer'),
     kbMgr = require('../input/kbmgr'),
     raf = require('../raf'),
     rng = require('../rng'),
+    sign = require('../util/sign'),
     cursorMgr = require('../input/cursormgr');
 
 var Keys = {
@@ -31,8 +32,8 @@ var colors = [
   '#B10DC9', '#FFDC00', '#F012BE',
 ];
 
-var playerSpeed = 200;
 var bulletSpeed = 1000;
+var playerAccel = 1000;
 
 var rand = rng(Date.now());
 
@@ -81,44 +82,6 @@ function assignWalls(maze) {
           color: color
         }));
       }
-      //top wall
-      color = rand.pick(colors);
-      if (room.top) {
-        aabb = AABB.createRect({
-          left: room.outerAABB.getLeft(),
-          top: room.outerAABB.getTop(),
-          right: room.outerAABB.x - doorWidth / 2,
-          bottom: room.innerAABB.getTop()
-        });
-        room.wallAABBs.push(aabb);
-        visualWalls.push(new DisplayRect({
-          aabb: aabb,
-          color: color
-        }));
-        aabb = AABB.createRect({
-          left: room.outerAABB.x + doorWidth / 2,
-          top: room.outerAABB.getTop(),
-          right: room.outerAABB.getRight(),
-          bottom: room.innerAABB.getTop()
-        });
-        room.wallAABBs.push(aabb);
-        visualWalls.push(new DisplayRect({
-          aabb: aabb,
-          color: color
-        }));
-      } else {
-        aabb = AABB.createRect({
-          left: room.outerAABB.getLeft(),
-          top: room.outerAABB.getTop(),
-          right: room.outerAABB.getRight(),
-          bottom: room.innerAABB.getTop()
-        });
-        room.wallAABBs.push(aabb);
-        visualWalls.push(new DisplayRect({
-          aabb: aabb,
-          color: color
-        }));
-      }
       //right wall
       color = rand.pick(colors);
       if (room.right) {
@@ -150,6 +113,44 @@ function assignWalls(maze) {
           top: room.outerAABB.getTop(),
           right: room.outerAABB.getRight(),
           bottom: room.outerAABB.getBottom()
+        });
+        room.wallAABBs.push(aabb);
+        visualWalls.push(new DisplayRect({
+          aabb: aabb,
+          color: color
+        }));
+      }
+      //top wall
+      color = rand.pick(colors);
+      if (room.top) {
+        aabb = AABB.createRect({
+          left: room.outerAABB.getLeft(),
+          top: room.outerAABB.getTop(),
+          right: room.outerAABB.x - doorWidth / 2,
+          bottom: room.innerAABB.getTop()
+        });
+        room.wallAABBs.push(aabb);
+        visualWalls.push(new DisplayRect({
+          aabb: aabb,
+          color: color
+        }));
+        aabb = AABB.createRect({
+          left: room.outerAABB.x + doorWidth / 2,
+          top: room.outerAABB.getTop(),
+          right: room.outerAABB.getRight(),
+          bottom: room.innerAABB.getTop()
+        });
+        room.wallAABBs.push(aabb);
+        visualWalls.push(new DisplayRect({
+          aabb: aabb,
+          color: color
+        }));
+      } else {
+        aabb = AABB.createRect({
+          left: room.outerAABB.getLeft(),
+          top: room.outerAABB.getTop(),
+          right: room.outerAABB.getRight(),
+          bottom: room.innerAABB.getTop()
         });
         room.wallAABBs.push(aabb);
         visualWalls.push(new DisplayRect({
@@ -401,21 +402,48 @@ PlayStage.prototype = inherit(DisplayContainer, {
     }
 
     if (kbMgr.keys[Keys.LEFT]) {
-      scrollLayer.vel.x = playerSpeed * 3;
+      scrollLayer.vel.x = player.maxSpeed * 3;
     } else if (kbMgr.keys[Keys.RIGHT]) {
-      scrollLayer.vel.x = -playerSpeed * 3;
+      scrollLayer.vel.x = -player.maxSpeed * 3;
     } else {
       scrollLayer.vel.x = 0;
     }
     if (kbMgr.keys[Keys.UP]) {
-      scrollLayer.vel.y = playerSpeed * 3;
+      scrollLayer.vel.y = player.maxSpeed * 3;
     } else if (kbMgr.keys[Keys.DOWN]) {
-      scrollLayer.vel.y = -playerSpeed * 3;
+      scrollLayer.vel.y = -player.maxSpeed * 3;
     } else {
       scrollLayer.vel.y = 0;
     }
-
+    player.accel.x = 0;
+    player.accel.y = 0;
     if (kbMgr.keys[Keys.A]) {
+      player.accel.x -= playerAccel;
+    }
+    if (kbMgr.keys[Keys.D]) {
+      player.accel.x += playerAccel;
+    }
+    if (kbMgr.keys[Keys.W]) {
+      player.accel.y -= playerAccel;
+    }
+    if (kbMgr.keys[Keys.S]) {
+      player.accel.y += playerAccel;
+    }
+    if (player.accel.x === 0 && player.vel.x !== 0) {
+      player.accel.x = playerAccel * -sign(player.vel.x);
+      if (Math.abs(player.vel.x + player.accel.x * elapsed) < Math.abs(player.accel.x * elapsed)) {
+        player.accel.x = 0;
+        player.vel.x = 0;
+      }
+    }
+    if (player.accel.y === 0 && player.vel.y !== 0) {
+      player.accel.y = playerAccel * -sign(player.vel.y);
+      if (Math.abs(player.vel.y + player.accel.y * elapsed) < Math.abs(player.accel.y * elapsed)) {
+        player.accel.y = 0;
+        player.vel.y = 0;
+      }
+    }
+    /*if (kbMgr.keys[Keys.A]) {
       player.vel.x = -playerSpeed;
     } else if (kbMgr.keys[Keys.D]) {
       player.vel.x = playerSpeed;
@@ -428,17 +456,13 @@ PlayStage.prototype = inherit(DisplayContainer, {
       player.vel.y = playerSpeed;
     } else {
       player.vel.y = 0;
-    }
+    }*/
     if (kbMgr.keys[Keys.Q]) {
       raf.stop();
       this.debugDisplay.text = 'game stopped';
     }
 
     player.update(elapsed);
-    player.oldCollisionAABB.x = player.collisionAABB.x;
-    player.oldCollisionAABB.y = player.collisionAABB.y;
-    player.collisionAABB.x = player.x;
-    player.collisionAABB.y = player.y;
 
     var collision = false;
     currentRoom.wallAABBs.forEach(function (wall) {
