@@ -40,7 +40,7 @@ Anim.prototype = inherit(Appliable, {
     this.target[this.prop] = this.start + (this.end - this.start) * this.timingFunction(ratio);
   },
   hasEnded: function () {
-    return this.currentTime >= duration;
+    return this.currentTime >= this.duration;
   }
 });
 
