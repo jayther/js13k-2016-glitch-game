@@ -3,6 +3,7 @@ var raf = require('./raf'),
     AABB = require('./math/aabb'),
     cursorMgr = require('./input/cursormgr'),
     kbMgr = require('./input/kbmgr'),
+    animMgr = require('./anim/mgr'),
     DisplayRect = require('./display/displayrect'),
     PlayStage = require('./game/playstage'),
     Player = require('./game/player');
@@ -132,10 +133,11 @@ raf.start(function(elapsed) {
   logicAccumulator += elapsed;
   for (i = 0; i < logicMaxSteps && logicAccumulator >= logicFrameRate; i += 1) {
     logicUpdate(logicFrameRate);
+    animMgr.update(logicFrameRate);
     logicAccumulator -= logicFrameRate;
   }
-  while (i >= logicMaxSteps && logicAccumulator >= logicFrameRate) {
-    logicAccumulator -= logicFrameRate;
+  if (logicAccumulator >= logicFrameRate) {
+    logicAccumulator -= Math.floor(logicAccumulator / logicFrameRate) * logicFrameRate;
   }
   render(elapsed);
 });
