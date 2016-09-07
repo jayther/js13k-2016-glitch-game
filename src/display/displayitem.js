@@ -38,9 +38,11 @@ DisplayItem.prototype = inherit(Dispatcher, Appliable, {
     this.y += this.vel.y * elapsed;
   },
   stageRender: function (elapsed) {
-    this.preRender(elapsed);
-    this.render(elapsed);
-    this.postRender(elapsed);
+    if (this.visible) {
+      this.preRender(elapsed);
+      this.render(elapsed);
+      this.postRender(elapsed);
+    }
   },
   preRender: function (elapsed) {
     var ctx = this.stage.ctx;
