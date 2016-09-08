@@ -24,3 +24,5 @@ AnimGroup.prototype = inherit(Anim, {
     });
   }
 });
+
+module.exports = AnimGroup;
