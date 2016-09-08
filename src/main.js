@@ -69,6 +69,7 @@ function restartPlayStage(e) {
   if (player.parent) {
     player.parent.removeChild(player);
   }
+  player.reset();
   var playStage = new PlayStage({
     ctx: ctx,
     viewSizeAABB: canvasAABB,
@@ -80,6 +81,7 @@ function restartPlayStage(e) {
   });
   playStage.on('restart', restartPlayStage);
   currentStage = playStage;
+  playStage.fadeIn();
 }
 
 restartPlayStage();

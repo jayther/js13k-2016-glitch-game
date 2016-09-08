@@ -18,6 +18,9 @@ function Player(options) {
     aabb: this.collisionSizeAABB.copy(),
     color: '#ffffff'
   }));
+  this.shootDelay = 0.25;
+  this.shootTimeLeft = 0;
+  this.shooting = false;
 }
 
 Player.prototype = inherit(DisplayContainer, {
@@ -28,6 +31,15 @@ Player.prototype = inherit(DisplayContainer, {
     player.oldCollisionAABB.y = player.collisionAABB.y;
     player.collisionAABB.x = player.x;
     player.collisionAABB.y = player.y;
+    if (this.shootTimeLeft > 0) {
+      this.shootTimeLeft -= elapsed;
+    }
+  },
+  reset: function () {
+    this.vel.x = 0;
+    this.vel.y = 0;
+    this.accel.x = 0;
+    this.accel.y = 0;
   }
 });
 
