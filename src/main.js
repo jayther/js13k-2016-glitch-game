@@ -135,11 +135,12 @@ raf.start(function(elapsed) {
   logicAccumulator += elapsed;
   for (i = 0; i < logicMaxSteps && logicAccumulator >= logicFrameRate; i += 1) {
     logicUpdate(logicFrameRate);
-    animMgr.update(logicFrameRate);
+    animMgr.update(logicFrameRate, true);
     logicAccumulator -= logicFrameRate;
   }
   if (logicAccumulator >= logicFrameRate) {
     logicAccumulator -= Math.floor(logicAccumulator / logicFrameRate) * logicFrameRate;
   }
+    animMgr.update(logicFrameRate, false);
   render(elapsed);
 });

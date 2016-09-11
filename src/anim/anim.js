@@ -16,7 +16,8 @@ function Anim(options) {
     start: null,
     end: null,
     timingFunction: timingFunctions.linear,
-    callback: null
+    callback: null,
+    useLogicTime: false
   }, options);
   this.currentTime = 0;
   this.viable = this.target && this.prop !== null && this.start !== null && this.end !== null;

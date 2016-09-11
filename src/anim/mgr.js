@@ -1,15 +1,21 @@
 
 function AnimMgr() {
   this.anims = [];
+  this.logicAnims = [];
 }
 
 AnimMgr.prototype = {
   run: function (anim) {
-    this.anims.push(anim);
+    if (anim.useLogicTime) {
+      this.logicAnims.push(anim);
+    } else {
+      this.anims.push(anim);
+    }
   },
-  update: function (elapsed) {
+  update: function (elapsed, usingLogicTime) {
+    var anims = usingLogicTime ? this.logicAnims : this.anims;
     var animsToRemove = [];
-    this.anims.forEach(function (anim, i) {
+    anims.forEach(function (anim, i) {
       anim.update(elapsed);
       if (anim.hasEnded()) {
         animsToRemove.push(i);
@@ -17,7 +23,7 @@ AnimMgr.prototype = {
     });
     var i;
     for (i = animsToRemove.length - 1; i >= 0; i--) {
-      this.anims.splice(animsToRemove[i], 1);
+      anims.splice(animsToRemove[i], 1);
     }
   }
 };
