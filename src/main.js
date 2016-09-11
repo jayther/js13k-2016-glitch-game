@@ -20,7 +20,7 @@ var colors = [
   '#3D9970', '#2ECC40', '#FF4136', '#85144B', '#FF851B',
   '#B10DC9', '#FFDC00', '#F012BE',
 ];
-var playerSpeed = 200;
+var playerSpeed = 500;
 
 var logicAccumulator = 0;
 var logicFrameRate = 1 / 30;

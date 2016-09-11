@@ -42,7 +42,7 @@ var colors = [
 ];
 
 var bulletSpeed = 1000;
-var playerAccel = 1000;
+var playerAccel = 2000;
 
 var rand = rng(Date.now());
 
@@ -490,19 +490,23 @@ PlayStage.prototype = inherit(DisplayContainer, {
               player.oldCollisionAABB.getRight() <= wall.getLeft()) {
             clipped = true;
             player.x = wall.getLeft() - player.collisionAABB.hw;
+            player.vel.x = 0;
           } else if (player.collisionAABB.getLeft() < wall.getRight() &&
                      player.oldCollisionAABB.getLeft() >= wall.getRight()) {
             clipped = true;
             player.x = wall.getRight() + player.collisionAABB.hw;
+            player.vel.x = 0;
           }
           if (player.collisionAABB.getTop() < wall.getBottom() &&
               player.oldCollisionAABB.getTop() >= wall.getBottom()) {
             clipped = true;
             player.y = wall.getBottom() + player.collisionAABB.hh;
+            player.vel.y = 0;
           } else if (player.collisionAABB.getBottom() > wall.getTop() &&
                      player.oldCollisionAABB.getBottom() <= wall.getTop()) {
             clipped = true;
             player.y = wall.getTop() - player.collisionAABB.hh;
+            player.vel.y = 0;
           }
         }
         if (clipped) {
