@@ -212,7 +212,7 @@ Maze.generate = function (options) {
   mazeTree.forEach(function (room) {
     var row = -bounds.top + room.y,
         col = -bounds.left + room.x;
-    mazeArr[row][col] = start.equals(room) ? 1 : end.equals(room) ? 2 : rand.int() + 3;
+    mazeArr[row][col] = start.equals(room) ? 1 : end.equals(room) ? 2 : rand.int(0xfffffff - 3) + 3;
   });
   return new Maze({
     seed: opts.seed,
