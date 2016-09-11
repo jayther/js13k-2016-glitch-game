@@ -42,7 +42,7 @@ var colors = [
 ];
 
 var bulletSpeed = 1000;
-var playerAccel = 2000;
+var playerAccel = 3000;
 
 var rand = rng(Date.now());
 
@@ -214,9 +214,9 @@ function assignWalls(maze) {
 function assignEnemies(maze) {
   var enemies = [];
   maze.traverseRooms(function (room, col, row) {
-    if (room.type > 2) {
+    if (room.type >= Maze.minRandType) {
       var roomEnemies = [];
-      var rand = rng(room.type);
+      var rand = rng(room.enemySeed);
       var spawnArea = room.innerAABB.copy();
       spawnArea.hw -= 40;
       spawnArea.hh -= 40;
@@ -248,9 +248,9 @@ function createRoomLabels(maze) {
   maze.traverseRooms(function (room) {
     if (room.type) {
       var text;
-      if (room.type === 1) {
+      if (room.type === Maze.startType) {
         text = 'START';
-      } else if (room.type === 2) {
+      } else if (room.type === Maze.endType) {
         text = 'FINISH';
       } else {
         text = 'TYPE: ' + room.type;
@@ -271,7 +271,7 @@ function createRoomLabels(maze) {
 function assignEndHatch(maze, endSizeAABB) {
   var endHatch = null;
   maze.traverseRooms(function (room) {
-    if (room.type === 2) {
+    if (room.type === Maze.endType) {
       var endAABB = endSizeAABB.copy();
       endAABB.x = room.innerAABB.x;
       endAABB.y = room.innerAABB.y;
@@ -283,6 +283,38 @@ function assignEndHatch(maze, endSizeAABB) {
     }
   });
   return endHatch;
+}
+
+function assignFoods(maze) {
+  var foods = [];
+  maze.traverseRooms(function (room) {
+    if (room.numFoods > 0) {
+      var i;
+      var spawnAABB = room.innerAABB.copy();
+      spawnAABB.hw -= 40;
+      spawnAABB.hh -= 40;
+      var rand = rng(room.foodSeed);
+      for (i = 0; i < room.numFoods; i += 1) {
+        var foodX = rand.range(spawnAABB.getLeft(), spawnAABB.getRight());
+        var foodY = rand.range(spawnAABB.getTop(), spawnAABB.getBottom());
+        var food = new DisplayCircle({
+          x: foodX,
+          y: foodY,
+          radius: 15,
+          color: '#cccccc'
+        });
+        food.collisionAABB = new AABB({
+          x: foodX,
+          y: foodY,
+          hw: food.radius,
+          hh: food.radius
+        });
+        foods.push(food);
+        room.foods.push(food);
+      }
+    }
+  });
+  return foods;
 }
 
 function PlayStage(options) {
@@ -300,12 +332,26 @@ function PlayStage(options) {
   this.maze = null;
   this.currentRoom = null;
   this.bullets = [];
+  this.foodsCollected = 0;
   
   this.state = null;
   
   this.scrollLayer = new DisplayContainer();
   this.addChild(this.scrollLayer);
+  
+  this.foodDisplay = new DisplayText({
+    text: 'fuds',
+    font: '30px Arial',
+    textAlign: 'right',
+    textBaseline: 'top',
+    x: this.viewSizeAABB.getRight() - 10,
+    y: 10,
+    color: '#ffffff'
+  });
+  this.addChild(this.foodDisplay);
+  
   this.initMaze();
+  
   this.scrollLayer.addChild(this.player);
   
   this.fadeOverlay = new DisplayRect({
@@ -384,11 +430,21 @@ PlayStage.prototype = inherit(DisplayContainer, {
     var endHatch = assignEndHatch(maze, AABB.createRect({ width: 60, height: 60 }));
     scrollLayer.addChild(endHatch);
     
+    var foods = assignFoods(maze);
+    foods.forEach(function (food) {
+      scrollLayer.addChild(food);
+    });
+    
     this.player.x = startVec.x;
     this.player.y = startVec.y;
 
     scrollLayer.x = this.viewSizeAABB.hw - startVec.x;
     scrollLayer.y = this.viewSizeAABB.hh - startVec.y;
+    
+    this.updateFoodDisplay();
+  },
+  updateFoodDisplay: function () {
+    this.foodDisplay.text = '' + this.foodsCollected + '/' + this.maze.requiredFoods + ' (' + (this.maze.totalFoods - this.foodsCollected) + ' left)';
   },
   update: function (elapsed) {
     if (this.state === states.play) {
@@ -480,6 +536,24 @@ PlayStage.prototype = inherit(DisplayContainer, {
       if (player.shooting && player.shootTimeLeft <= 0) {
         this.triggerGun();
       }
+      
+      //fuds
+      var foodsToRemove = [];
+      var foodsCollected = 0;
+      currentRoom.foods.forEach(function (food, i) {
+        if (player.collisionAABB.collidesAABB(food.collisionAABB)) {
+          foodsCollected++;
+          foodsToRemove.push(i);
+        }
+      });
+      if (foodsCollected > 0) {
+        this.foodsCollected += foodsCollected;
+        this.updateFoodDisplay();
+      }
+      for (i = foodsToRemove.length - 1; i >= 0; i--) {
+        var food = currentRoom.foods.splice(foodsToRemove[i], 1)[0];
+        scrollLayer.removeChild(food);
+      }
 
       var collision = false;
       currentRoom.wallAABBs.forEach(function (wall) {
@@ -530,7 +604,7 @@ PlayStage.prototype = inherit(DisplayContainer, {
         scrollLayer.y = this.viewSizeAABB.hh - refocusToRoom.outerAABB.y;
         currentRoom = refocusToRoom;
         this.currentRoom = currentRoom;
-      } else if (currentRoom.endAABB && currentRoom.endAABB.containsAABB(player.collisionAABB)) {
+      } else if (currentRoom.endAABB && this.foodsCollected >= this.maze.requiredFoods && currentRoom.endAABB.containsAABB(player.collisionAABB)) {
         this.fadeOut();
       }
 

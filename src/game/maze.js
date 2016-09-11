@@ -5,6 +5,10 @@ var inherit = require('../util/inherit'),
     AABB = require('../math/aabb'),
     rng = require('../rng');
 
+var startType = 1;
+var endType = 2;
+var minRandType = 3;
+
 function Maze(options) {
   this.applyOptions({
     seed: 0,
@@ -14,20 +18,43 @@ function Maze(options) {
     doorWidth: 0
   }, options);
   this.rooms = null;
+  this.numRooms = 0;
+  this.requiredFoods = 0;
+  this.totalFoods = 0;
   this.init();
 }
-
+Maze.startType = startType;
+Maze.endType = endType;
+Maze.minRandType = minRandType;
 Maze.prototype = inherit(Appliable, {
   init: function () {
+    var mazeRand = rng(this.seed);
     var rooms = [];
     var roomSizeAABB = this.roomSizeAABB,
         innerRoomSizeAABB = this.innerRoomSizeAABB;
+    
+    //count rooms
+    var numRooms = 0;
+    this.mazeArray.forEach(function (rows, row) {
+      rows.forEach(function (protoRoom, col) {
+        if (protoRoom > 0) {
+          numRooms++;
+        }
+      });
+    });
+    this.numRooms = numRooms;
+    
+    var totalFoods = 0;
+    
     //create rooms
     this.mazeArray.forEach(function (rows, row) {
       rooms.push([]);
       rows.forEach(function (protoRoom, col) {
+        var roomRand = rng(protoRoom);
         var room = {
           type: protoRoom,
+          foodSeed: roomRand.int(),
+          enemySeed: roomRand.int(),
           left: null,
           top: null,
           right: null,
@@ -36,7 +63,9 @@ Maze.prototype = inherit(Appliable, {
           innerAABB: null,
           wallAABBs: [],
           enemies: [],
-          endAABB: null
+          endAABB: null,
+          foods: [],
+          numFoods: 0
         };
         if (protoRoom) {
           room.outerAABB = new AABB({
@@ -51,10 +80,20 @@ Maze.prototype = inherit(Appliable, {
             hw: innerRoomSizeAABB.hw,
             hh: innerRoomSizeAABB.hh
           });
+          if (protoRoom >= minRandType) {
+            var foods = mazeRand.range(12, 14);
+            room.numFoods = foods;
+            totalFoods += foods;
+          }
         }
         rooms[row].push(room);
       });
     });
+    
+    //fuds
+    this.totalFoods = totalFoods;
+    this.requiredFoods = Math.floor(totalFoods * 0.7);
+    
     //determine connections
     rooms.forEach(function (rows, row) {
       rows.forEach(function (room, col) {
@@ -212,7 +251,7 @@ Maze.generate = function (options) {
   mazeTree.forEach(function (room) {
     var row = -bounds.top + room.y,
         col = -bounds.left + room.x;
-    mazeArr[row][col] = start.equals(room) ? 1 : end.equals(room) ? 2 : rand.int(0xfffffff - 3) + 3;
+    mazeArr[row][col] = start.equals(room) ? startType : end.equals(room) ? endType : rand.int(0xfffffff - minRandType) + minRandType;
   });
   return new Maze({
     seed: opts.seed,
