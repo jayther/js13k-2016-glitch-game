@@ -1,4 +1,5 @@
 var inherit = require('../util/inherit'),
+    extend = require('../util/extend'),
     Vec2 = require('../math/vec2'),
     Appliable = require('../util/appliable'),
     AABB = require('../math/aabb'),
@@ -84,8 +85,14 @@ Maze.prototype = inherit(Appliable, {
   }
 });
 
-Maze.generate = function (seed, roomSizeAABB, innerRoomSizeAABB, doorWidth) {
-  var rand = rng(seed);
+Maze.generate = function (options) {
+  var opts = extend({
+    seed: 0,
+    roomSizeAABB: null,
+    innerRoomSizeAABB: null,
+    doorWidth: 0
+  }, options || {});
+  var rand = rng(opts.seed);
   var roomsApart = rand.range(4, 7);
   var fillerRooms = rand.range(5, 10);
   var start = new Vec2(0, 0);
@@ -208,11 +215,11 @@ Maze.generate = function (seed, roomSizeAABB, innerRoomSizeAABB, doorWidth) {
     mazeArr[row][col] = start.equals(room) ? 1 : end.equals(room) ? 2 : rand.int() + 3;
   });
   return new Maze({
-    seed: seed,
+    seed: opts.seed,
     mazeArray: mazeArr,
-    roomSizeAABB: roomSizeAABB,
-    innerRoomSizeAABB: innerRoomSizeAABB,
-    doorWidth: doorWidth
+    roomSizeAABB: opts.roomSizeAABB,
+    innerRoomSizeAABB: opts.innerRoomSizeAABB,
+    doorWidth: opts.doorWidth
   });
 };
 

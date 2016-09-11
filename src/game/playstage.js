@@ -345,12 +345,12 @@ function PlayStage(options) {
 PlayStage.prototype = inherit(DisplayContainer, {
   initMaze: function () {
     var scrollLayer = this.scrollLayer;
-    var maze = Maze.generate(
-      this.mazeSeed,
-      this.roomSizeAABB,
-      this.innerRoomSizeAABB,
-      this.doorWidth
-    );
+    var maze = Maze.generate({
+      seed: this.mazeSeed,
+      roomSizeAABB: this.roomSizeAABB,
+      innerRoomSizeAABB: this.innerRoomSizeAABB,
+      doorWidth: this.doorWidth
+    });
     var walls = assignWalls(maze);
 
     walls.forEach(function (wall) {
