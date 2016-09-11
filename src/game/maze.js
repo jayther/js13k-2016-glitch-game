@@ -205,7 +205,7 @@ Maze.generate = function (seed, roomSizeAABB, innerRoomSizeAABB, doorWidth) {
   mazeTree.forEach(function (room) {
     var row = -bounds.top + room.y,
         col = -bounds.left + room.x;
-    mazeArr[row][col] = start.equals(room) ? 1 : end.equals(room) ? 2 : rand.range(3, 10);
+    mazeArr[row][col] = start.equals(room) ? 1 : end.equals(room) ? 2 : rand.int() + 3;
   });
   return new Maze({
     seed: seed,

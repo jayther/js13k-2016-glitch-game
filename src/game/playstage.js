@@ -216,7 +216,7 @@ function assignEnemies(maze) {
   maze.traverseRooms(function (room, col, row) {
     if (room.type > 2) {
       var roomEnemies = [];
-      var rand = rng(maze.seed + room.type * row + col);
+      var rand = rng(room.type);
       var spawnArea = room.innerAABB.copy();
       spawnArea.hw -= 40;
       spawnArea.hh -= 40;
